@@ -503,7 +503,7 @@
         }
     }
 
-    function closeList() {
+    export function closeList() {
         filterText = '';
         listOpen = false;
     }
