@@ -578,11 +578,22 @@
     function handleItemClick(args) {
         const { item, i } = args;
         if (item?.selectable === false) return;
-        if (value && !multiple && value[itemId] === item[itemId]) return closeList();
+
+        if (value) {
+            if (multiple && activeValuesSet.has(item[itemId])) {
+                const index = value.findIndex((v) => v[itemId] === item[itemId]);
+                handleMultiItemClear(index);
+                return;
+            } else if (!multiple && value[itemId] === item[itemId]) {
+                return closeList();
+            }
+        }
+
         if (isItemSelectable(item)) {
             hoverItemIndex = i;
             handleSelect(item);
         }
+
         itemEventInProgress = false;
     }
 
