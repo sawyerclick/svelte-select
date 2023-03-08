@@ -43,6 +43,8 @@
     export let required = false;
     export let closeListOnChange = true;
 
+    export let showFirstTag = false;
+
     export let createGroupHeaderItem = (groupValue, item) => {
         return {
             value: groupValue,
@@ -426,9 +428,7 @@
                 if (!multiple || filterText.length > 0) return;
 
                 if (multiple && value && value.length > 0) {
-                    handleMultiItemClear(activeValue !== undefined ? activeValue : value.length - 1);
-                    if (activeValue === 0 || activeValue === undefined) break;
-                    activeValue = value.length > activeValue ? activeValue - 1 : undefined;
+                    handleClear();
                 }
 
                 break;
@@ -759,7 +759,7 @@
     <div class="value-container">
         {#if hasValue}
             {#if multiple}
-                {#each value as item, i}
+                {#each showFirstTag ? [value[0]] : value as item, i}
                     <div
                         class="multi-item"
                         class:active={activeValue === i}
@@ -783,6 +783,9 @@
                         {/if}
                     </div>
                 {/each}
+                {#if showFirstTag && value.length > 1}
+                    <div class="multi-item multi-item-counter">&plus;{value.length - 1}</div>
+                {/if}
             {:else}
                 <div class="selected-item" class:hide-selected-item={hideSelectedItem}>
                     <slot name="selection" selection={value}>
