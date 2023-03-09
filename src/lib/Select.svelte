@@ -451,14 +451,14 @@
         }
     }
 
-    function handleFocus(e) {
+    export function handleFocus(e) {
         if (focused && input === document?.activeElement) return;
         if (e) dispatch('focus', e);
         input.focus();
         focused = true;
     }
 
-    async function handleBlur(e) {
+    export async function handleBlur(e) {
         if (isScrolling || itemEventInProgress) return;
         if (listOpen || focused) {
             dispatch('blur', e);
@@ -469,7 +469,7 @@
         }
     }
 
-    function handleClick() {
+    export function handleClick() {
         if (disabled) return;
         listOpen = !listOpen;
     }
