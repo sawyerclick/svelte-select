@@ -253,7 +253,7 @@
             listOpen = true;
 
             if (multiple) {
-                activeValue = undefined;
+                activeValue = [];
             }
         }
     }
