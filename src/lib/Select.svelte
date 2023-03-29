@@ -354,7 +354,7 @@
         const itemToRemove = value[i];
 
         if (value.length === 1) {
-            value = undefined;
+            value = [];
         } else {
             value = value.filter((item) => {
                 return item !== itemToRemove;
@@ -476,7 +476,7 @@
 
     export function handleClear() {
         dispatch('clear', value);
-        value = undefined;
+        value = multiple ? [] : undefined;
         closeList();
         handleFocus();
     }
