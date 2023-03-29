@@ -25,7 +25,7 @@
     export let multiFullItemClearable = false;
     export let disabled = false;
     export let focused = false;
-    export let value = null;
+    export let value = multiple ? [] : null;
     export let filterText = '';
     export let placeholder = 'Please select';
     export let placeholderAlwaysShow = false;
