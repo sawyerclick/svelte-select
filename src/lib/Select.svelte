@@ -759,33 +759,35 @@
     <div class="value-container">
         {#if hasValue}
             {#if multiple}
-                {#each showFirstTag ? [value[0]] : value as item, i}
-                    <div
-                        class="multi-item"
-                        class:active={activeValue === i}
-                        class:disabled
-                        on:click|preventDefault={() => (multiFullItemClearable ? handleMultiItemClear(i) : {})}
-                        on:keydown|preventDefault|stopPropagation>
-                        <span class="multi-item-text">
-                            <slot name="selection" selection={item} index={i}>
-                                {item[label]}
-                            </slot>
-                        </span>
-
-                        {#if !disabled && !multiFullItemClearable && ClearIcon}
-                            <div
-                                class="multi-item-clear"
-                                on:pointerup|preventDefault|stopPropagation={() => handleMultiItemClear(i)}>
-                                <slot name="multi-clear-icon">
-                                    <ClearIcon />
+                <div class="values">
+                    {#each showFirstTag ? [value[0]] : value as item, i}
+                        <div
+                            class="multi-item"
+                            class:active={activeValue === i}
+                            class:disabled
+                            on:click|preventDefault={() => (multiFullItemClearable ? handleMultiItemClear(i) : {})}
+                            on:keydown|preventDefault|stopPropagation>
+                            <span class="multi-item-text">
+                                <slot name="selection" selection={item} index={i}>
+                                    {item[label]}
                                 </slot>
-                            </div>
-                        {/if}
-                    </div>
-                {/each}
-                {#if showFirstTag && value.length > 1}
-                    <div class="multi-item multi-item-counter">&plus;{value.length - 1}</div>
-                {/if}
+                            </span>
+
+                            {#if !disabled && !multiFullItemClearable && ClearIcon}
+                                <div
+                                    class="multi-item-clear"
+                                    on:pointerup|preventDefault|stopPropagation={() => handleMultiItemClear(i)}>
+                                    <slot name="multi-clear-icon">
+                                        <ClearIcon />
+                                    </slot>
+                                </div>
+                            {/if}
+                        </div>
+                    {/each}
+                    {#if showFirstTag && value.length > 1}
+                        <div class="multi-item multi-item-counter">&plus;{value.length - 1}</div>
+                    {/if}
+                </div>
             {:else}
                 <div class="selected-item" class:hide-selected-item={hideSelectedItem}>
                     <slot name="selection" selection={value}>
