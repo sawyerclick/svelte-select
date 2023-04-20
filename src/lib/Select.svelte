@@ -299,6 +299,8 @@
     $: if (input && listOpen && !focused) handleFocus();
     $: if (filterText) hoverItemIndex = 0;
 
+    $: activeValuesSet = new Set(value ? (multiple ? value.map((v) => v[itemId]) : [value[itemId]]) : []);
+
     function handleFilterEvent(items) {
         if (listOpen) dispatch('filter', items);
     }
@@ -379,8 +381,11 @@
                     if (filteredItems.length === 0) break;
                     const hoverItem = filteredItems[hoverItemIndex];
 
-                    if (value && !multiple && value[itemId] === hoverItem[itemId]) {
-                        closeList();
+                    if (
+                        (value && !multiple && value[itemId] === hoverItem[itemId]) ||
+                        (value?.length && multiple && value.map((d) => d[itemId]).includes(hoverItem[itemId]))
+                    ) {
+                        handleItemClick({ item: hoverItem, i: hoverItemIndex });
                         break;
                     } else {
                         handleSelect(filteredItems[hoverItemIndex]);
@@ -621,8 +626,6 @@
             return;
         }
     }
-
-    $: activeValuesSet = new Set(value ? (multiple ? value.map((v) => v[itemId]) : [value[itemId]]) : []);
 
     function isItemActive(item, value, itemId) {
         return value && (multiple ? activeValuesSet.has(item[itemId]) : item[itemId] === value[itemId]);
