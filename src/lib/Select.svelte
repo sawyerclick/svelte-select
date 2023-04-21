@@ -823,7 +823,10 @@
         {/if}
 
         {#if showClear}
-            <button class="icon clear-select" on:pointerup|preventDefault|stopPropagation={handleClear}>
+            <button
+                class="icon clear-select"
+                title="Clear selection"
+                on:click|preventDefault|stopPropagation={handleClear}>
                 <slot name="clear-icon">
                     <ClearIcon />
                 </slot>
