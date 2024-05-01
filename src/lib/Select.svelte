@@ -25,7 +25,7 @@
     export let multiFullItemClearable = false;
     export let disabled = false;
     export let focused = false;
-    export let value = null;
+    export let value = multiple ? [] : null;
     export let filterText = '';
     export let placeholder = 'Please select';
     export let placeholderAlwaysShow = false;
@@ -43,6 +43,8 @@
     export let required = false;
     export let closeListOnChange = true;
     export let clearFilterTextOnBlur = true;
+
+    export let showFirstTag = false;
 
     export let createGroupHeaderItem = (groupValue, item) => {
         return {
@@ -252,7 +254,7 @@
             listOpen = true;
 
             if (multiple) {
-                activeValue = undefined;
+                activeValue = [];
             }
         }
     }
@@ -297,6 +299,8 @@
     $: if (listOpen && multiple) hoverItemIndex = 0;
     $: if (input && listOpen && !focused) handleFocus();
     $: if (filterText) hoverItemIndex = 0;
+
+    $: activeValuesSet = new Set(value ? (multiple ? value.map((v) => v[itemId]) : [value[itemId]]) : []);
 
     function handleFilterEvent(items) {
         if (listOpen) dispatch('filter', items);
@@ -353,7 +357,7 @@
         const itemToRemove = value[i];
 
         if (value.length === 1) {
-            value = undefined;
+            value = [];
         } else {
             value = value.filter((item) => {
                 return item !== itemToRemove;
@@ -378,8 +382,11 @@
                     if (filteredItems.length === 0) break;
                     const hoverItem = filteredItems[hoverItemIndex];
 
-                    if (value && !multiple && value[itemId] === hoverItem[itemId]) {
-                        closeList();
+                    if (
+                        (value && !multiple && value[itemId] === hoverItem[itemId]) ||
+                        (value?.length && multiple && value.map((d) => d[itemId]).includes(hoverItem[itemId]))
+                    ) {
+                        handleItemClick({ item: hoverItem, i: hoverItemIndex });
                         break;
                     } else {
                         handleSelect(filteredItems[hoverItemIndex]);
@@ -427,9 +434,7 @@
                 if (!multiple || filterText.length > 0) return;
 
                 if (multiple && value && value.length > 0) {
-                    handleMultiItemClear(activeValue !== undefined ? activeValue : value.length - 1);
-                    if (activeValue === 0 || activeValue === undefined) break;
-                    activeValue = value.length > activeValue ? activeValue - 1 : undefined;
+                    handleClear();
                 }
 
                 break;
@@ -452,15 +457,15 @@
         }
     }
 
-    function handleFocus(e) {
+    export function handleFocus(e) {
         if (focused && input === document?.activeElement) return;
         if (e) dispatch('focus', e);
         input?.focus();
         focused = true;
     }
 
-    async function handleBlur(e) {
-        if (isScrolling) return;
+    export async function handleBlur(e) {
+        if (isScrolling || itemEventInProgress) return;
         if (listOpen || focused) {
             dispatch('blur', e);
             closeList();
@@ -470,15 +475,15 @@
         }
     }
 
-    function handleClick() {
+    export function handleClick() {
         if (disabled) return;
-        if (filterText.length > 0) return listOpen = true;
+        if (filterText.length > 0) return (listOpen = true);
         listOpen = !listOpen;
     }
 
     export function handleClear() {
         dispatch('clear', value);
-        value = undefined;
+        value = multiple ? [] : undefined;
         closeList();
         handleFocus();
     }
@@ -505,10 +510,8 @@
         }
     }
 
-    function closeList() {
-        if (clearFilterTextOnBlur) {
-            filterText = '';
-        }
+    export function closeList() {
+        filterText = '';
         listOpen = false;
     }
 
@@ -582,11 +585,23 @@
     function handleItemClick(args) {
         const { item, i } = args;
         if (item?.selectable === false) return;
-        if (value && !multiple && value[itemId] === item[itemId]) return closeList();
+
+        if (value) {
+            if (multiple && activeValuesSet.has(item[itemId])) {
+                const index = value.findIndex((v) => v[itemId] === item[itemId]);
+                handleMultiItemClear(index);
+                return;
+            } else if (!multiple && value[itemId] === item[itemId]) {
+                return closeList();
+            }
+        }
+
         if (isItemSelectable(item)) {
             hoverItemIndex = i;
             handleSelect(item);
         }
+
+        itemEventInProgress = false;
     }
 
     function setHoverIndex(increment) {
@@ -615,8 +630,7 @@
     }
 
     function isItemActive(item, value, itemId) {
-        if (multiple) return;
-        return value && value[itemId] === item[itemId];
+        return value && (multiple ? activeValuesSet.has(item[itemId]) : item[itemId] === value[itemId]);
     }
 
     function isItemFirst(itemIndex) {
@@ -690,13 +704,13 @@
             class="svelte-select-list"
             class:prefloat
             on:scroll={handleListScroll}
-            on:pointerup|preventDefault|stopPropagation
-            on:mousedown|preventDefault|stopPropagation
-			role="none">
-            {#if $$slots['list-prepend']}<slot name="list-prepend" />{/if}
+            on:pointerdown|preventDefault={handlePointerDown}
+            on:pointerup|preventDefault|stopPropagation>
+            <slot name="list-prepend" />
             {#if $$slots.list}<slot name="list" {filteredItems} />
             {:else if filteredItems.length > 0}
                 {#each filteredItems as item, i}
+                    {@const isActive = isItemActive(item, value, itemId)}
                     <div
                         on:mouseover={() => handleHover(i)}
                         on:focus={() => handleHover(i)}
@@ -706,16 +720,16 @@
                         tabindex="-1"
                         role="none">
                         <div
-                            use:activeScroll={{ scroll: isItemActive(item, value, itemId), listDom }}
+                            use:activeScroll={{ scroll: isActive, listDom }}
                             use:hoverScroll={{ scroll: scrollToHoverItem === i, listDom }}
                             class="item"
                             class:list-group-title={item.groupHeader}
-                            class:active={isItemActive(item, value, itemId)}
+                            class:active={isActive}
                             class:first={isItemFirst(i)}
                             class:hover={hoverItemIndex === i}
                             class:group-item={item.groupItem}
                             class:not-selectable={item?.selectable === false}>
-                            <slot name="item" {item} index={i}>
+                            <slot name="item" {item} index={i} active={isActive}>
                                 {item?.[label]}
                             </slot>
                         </div>
@@ -726,7 +740,7 @@
                     <div class="empty">No options</div>
                 </slot>
             {/if}
-            {#if $$slots['list-append']}<slot name="list-append" />{/if}
+            <slot name="list-append" />
         </div>
     {/if}
 
@@ -746,31 +760,35 @@
     <div class="value-container">
         {#if hasValue}
             {#if multiple}
-                {#each value as item, i}
-                    <div
-                        class="multi-item"
-                        class:active={activeValue === i}
-                        class:disabled
-                        on:click|preventDefault={() => (multiFullItemClearable ? handleMultiItemClear(i) : {})}
-                        on:keydown|preventDefault|stopPropagation
-                        role="none">
-                        <span class="multi-item-text">
-                            <slot name="selection" selection={item} index={i}>
-                                {item[label]}
-                            </slot>
-                        </span>
-
-                        {#if !disabled && !multiFullItemClearable && ClearIcon}
-                            <div
-                                class="multi-item-clear"
-                                on:pointerup|preventDefault|stopPropagation={() => handleMultiItemClear(i)}>
-                                <slot name="multi-clear-icon">
-                                    <ClearIcon />
+                <div class="values">
+                    {#each showFirstTag ? [value[0]] : value as item, i}
+                        <div
+                            class="multi-item"
+                            class:active={activeValue === i}
+                            class:disabled
+                            on:click|preventDefault={() => (multiFullItemClearable ? handleMultiItemClear(i) : {})}
+                            on:keydown|preventDefault|stopPropagation>
+                            <span class="multi-item-text">
+                                <slot name="selection" selection={item} index={i}>
+                                    {item[label]}
                                 </slot>
-                            </div>
-                        {/if}
-                    </div>
-                {/each}
+                            </span>
+
+                            {#if !disabled && !multiFullItemClearable && ClearIcon}
+                                <div
+                                    class="multi-item-clear"
+                                    on:pointerup|preventDefault|stopPropagation={() => handleMultiItemClear(i)}>
+                                    <slot name="multi-clear-icon">
+                                        <ClearIcon />
+                                    </slot>
+                                </div>
+                            {/if}
+                        </div>
+                    {/each}
+                    {#if showFirstTag && value.length > 1}
+                        <div class="multi-item multi-item-counter">&plus;{value.length - 1}</div>
+                    {/if}
+                </div>
             {:else}
                 <div class="selected-item" class:hide-selected-item={hideSelectedItem}>
                     <slot name="selection" selection={value}>
@@ -803,7 +821,10 @@
         {/if}
 
         {#if showClear}
-            <button type="button" class="icon clear-select" on:click={handleClear}>
+            <button
+                class="icon clear-select"
+                title="Clear selection"
+                on:click|preventDefault|stopPropagation={handleClear}>
                 <slot name="clear-icon">
                     <ClearIcon />
                 </slot>
